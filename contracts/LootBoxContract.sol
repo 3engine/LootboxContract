@@ -5,8 +5,19 @@ import "erc721a/contracts/ERC721A.sol";
 import "@openzeppelin/contracts/access/AccessControl.sol";
 import "@openzeppelin/contracts/token/common/ERC2981.sol";
 
+interface IERC20 {
+    function balanceOf(address account) external view returns (uint256);
+
+    function transfer(
+        address recipient,
+        uint256 amount
+    ) external returns (bool);
+}
+
 interface IERC721Mintable {
     function mint(address to, uint256 tokenId) external;
+
+    function exists(uint256 tokenId) external view returns (bool);
 
     function isMinter(address account) external view returns (bool);
 }
@@ -48,8 +59,8 @@ contract ItemsContract is ERC721A, ERC2981, AccessControl {
     string public BASE_URI;
 
     constructor(
-        string memory name,
-        string memory symbol,
+        string memory _name,
+        string memory _symbol,
         address minter,
         string memory _URI
     ) ERC721A(_name, _symbol) {
@@ -75,6 +86,13 @@ contract ItemsContract is ERC721A, ERC2981, AccessControl {
 
         IERC721Mintable mintableContract = IERC721Mintable(_itemContract);
         require(mintableContract.isMinter(address(this)), "NOT_A_MINTER");
+
+        for (uint8 i = 0; i < _itemIds.length; i++) {
+            require(
+                mintableContract.exists(_itemIds[i]),
+                "ITEM_DOES_NOT_EXIST"
+            );
+        }
 
         uint8 totalChance;
         for (uint8 i = 0; i < _chances.length; i++) {
@@ -190,6 +208,14 @@ contract ItemsContract is ERC721A, ERC2981, AccessControl {
         address account
     ) external onlyRole(DEFAULT_ADMIN_ROLE) {
         revokeRole(MINTER_ROLE, account);
+    }
+
+    function withdrawToken(address _tokenAddress, address _receiver) external {
+        IERC20 token = IERC20(_tokenAddress);
+        uint256 balance = token.balanceOf(address(this));
+        require(balance != 0, "TOKEN_BALANCE_IS_EMPTY");
+        bool sent = token.transfer(_receiver, balance);
+        require(sent, "TOKEN_TX_FAILED");
     }
 
     function supportsInterface(

@@ -8,6 +8,15 @@ interface ILootBox {
     function getSupply(uint256 lootboxId) external view returns (uint256);
 }
 
+interface IERC20 {
+    function balanceOf(address account) external view returns (uint256);
+
+    function transfer(
+        address recipient,
+        uint256 amount
+    ) external returns (bool);
+}
+
 contract Key is ERC721A, AccessControl {
     bytes32 public constant MODERATOR_ROLE = keccak256("MODERATOR_ROLE");
     ILootBox public lootBoxContract;
@@ -20,7 +29,6 @@ contract Key is ERC721A, AccessControl {
         uint256 supply;
         bool saleActive;
     }
-
     mapping(uint256 => KeyInfo) public keyInfos;
     mapping(uint256 => uint256) public keyBoxID;
 
@@ -119,6 +127,14 @@ contract Key is ERC721A, AccessControl {
         address _address
     ) external onlyRole(DEFAULT_ADMIN_ROLE) {
         revokeRole(MODERATOR_ROLE, _address);
+    }
+
+    function withdrawToken(address _tokenAddress, address _receiver) external {
+        IERC20 token = IERC20(_tokenAddress);
+        uint256 balance = token.balanceOf(address(this));
+        require(balance != 0, "TOKEN_BALANCE_IS_EMPTY");
+        bool sent = token.transfer(_receiver, balance);
+        require(sent, "TOKEN_TX_FAILED");
     }
 
     function supportsInterface(
