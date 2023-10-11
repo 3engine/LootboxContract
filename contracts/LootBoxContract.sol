@@ -19,6 +19,7 @@ interface IKeyContract {
     function ownerOf(uint256 tokenId) external view returns (address);
     function keyBoxID(uint256 tokenId) external view returns (uint256);
     function burnKey(uint256 keyId) external;
+    function createKey(uint256 _lootboxId, uint256 _price) external;
 }
 
 
@@ -35,7 +36,6 @@ contract ItemsContract is ERC721A, ERC2981, AccessControl {
     struct LootBox {
         uint256 id;
         uint256 supply;
-        uint256 price;
         Item[] items;
         address itemContract;
     }    
@@ -55,8 +55,8 @@ contract ItemsContract is ERC721A, ERC2981, AccessControl {
 
     function createLootBox(
     uint256 _supply,
-    uint256 _price,
     address _itemContract,
+    uint256 _price,
     uint256[] memory _itemIds,
     uint8[] memory _chances
     ) external onlyRole(DEFAULT_ADMIN_ROLE) {
@@ -75,7 +75,6 @@ contract ItemsContract is ERC721A, ERC2981, AccessControl {
     LootBox storage newBox = lootBoxes[currentLootBoxId];
     newBox.id = currentLootBoxId;
     newBox.supply = _supply;
-    newBox.price = _price;
     newBox.itemContract = _itemContract;
 
         for (uint8 i = 0; i < _itemIds.length; i++) {
@@ -85,6 +84,7 @@ contract ItemsContract is ERC721A, ERC2981, AccessControl {
             });
             newBox.items.push(newItem);
         }
+    keyContract.createKey(currentLootBoxId, _price); 
     }   
 
 
