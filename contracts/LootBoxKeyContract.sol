@@ -23,6 +23,7 @@ interface IERC20 {
 contract KeyContract is ERC721A, ERC2981, AccessControl {
     bytes32 public constant MODERATOR_ROLE = keccak256("MODERATOR_ROLE");
     ILootBox public lootBoxContract;
+    string public BASE_URI;
     uint256 public _keyIds = 0;
     uint256 public currentMintedKeys = 0;
 
@@ -45,11 +46,19 @@ contract KeyContract is ERC721A, ERC2981, AccessControl {
         lootBoxContract = ILootBox(_lootBoxContractAddress);
     }
 
+    /**
+     * @dev Modifier that checks that caller is not an Contract
+     */
     modifier callerIsUser() {
         require(tx.origin == msg.sender, "CALLER_IS_NOT_USER");
         _;
     }
 
+    /**
+     * @dev Creates a new key with specified parameters.
+     * @param _lootboxId The ID of the lootbox.
+     * @param _price Price of the key.
+     */
     function createKey(
         uint256 _lootboxId,
         uint256 _price
@@ -65,6 +74,11 @@ contract KeyContract is ERC721A, ERC2981, AccessControl {
         });
     }
 
+    /**
+     * @dev Allows admins to change the price of a specified key.
+     * @param _keyId ID of the key whose price needs to be changed.
+     * @param _price New price for the key.
+     */
     function changeKeyPrice(
         uint256 _keyId,
         uint256 _price
@@ -73,6 +87,10 @@ contract KeyContract is ERC721A, ERC2981, AccessControl {
         keyInfos[_keyId].price = _price;
     }
 
+    /**
+     * @dev Toggles the sale status of a specified key.
+     * @param _keyId ID of the key whose sale status needs to be toggled.
+     */
     function toggleSaleStatus(
         uint256 _keyId
     ) external onlyRole(DEFAULT_ADMIN_ROLE) {
@@ -80,6 +98,11 @@ contract KeyContract is ERC721A, ERC2981, AccessControl {
         keyInfos[_keyId].saleActive = !keyInfos[_keyId].saleActive;
     }
 
+    /**
+     * @dev Allows users to purchase a specified key. Payment in Native Token is required.
+     * @param _keyId ID of the key to be purchased.
+     * @param _amount Amount of keys to be purchased.
+     */
     function purchaseKey(
         uint256 _keyId,
         uint256 _amount
@@ -105,26 +128,69 @@ contract KeyContract is ERC721A, ERC2981, AccessControl {
         }
     }
 
+    /**
+     * @dev Allows moderators to burn a specified key.
+     * @param _keyId ID of the key to be burned.
+     */
     function burnKey(uint256 _keyId) external onlyRole(MODERATOR_ROLE) {
         _burn(_keyId);
     }
 
+    /**
+     * @dev Checks if an address has a moderator role.
+     * @param _address Address to be checked.
+     */
     function isModerator(address _address) external view returns (bool) {
         return hasRole(MODERATOR_ROLE, _address);
     }
 
+    /**
+     * @dev Grants the moderator role to a specified address.
+     * @param _address Address to be granted the role.
+     */
     function grantModeratorRole(
         address _address
     ) external onlyRole(DEFAULT_ADMIN_ROLE) {
         grantRole(MODERATOR_ROLE, _address);
     }
 
+    /**
+     * @dev Revokes the moderator role from a specified address.
+     * @param _address Address from which the role needs to be revoked.
+     */
     function revokeModeratorRole(
         address _address
     ) external onlyRole(DEFAULT_ADMIN_ROLE) {
         revokeRole(MODERATOR_ROLE, _address);
     }
 
+    /**
+     * @dev Sets the base URI for tokens.
+     * @param _URI The base URI to be set.
+     */
+    function setBaseURI(
+        string memory _URI
+    ) public onlyRole(DEFAULT_ADMIN_ROLE) {
+        BASE_URI = _URI;
+    }
+
+    /**
+     * @dev Retrieves the full URI for a specific token ID.
+     * @param _id ID of the token.
+     */
+    function tokenURI(
+        uint256 _id
+    ) public view override(ERC721A) returns (string memory) {
+        return
+            bytes(BASE_URI).length > 0
+                ? string(abi.encodePacked(BASE_URI, _toString(_id)))
+                : "";
+    }
+
+    /**
+     * @dev Allows the admin to withdraw all ether from the contract.
+     * @param _receiver Address to receive the withdrawn ether.
+     */
     function withdraw(address _receiver) external onlyRole(DEFAULT_ADMIN_ROLE) {
         uint256 balance = address(this).balance;
         require(balance != 0, "BALANCE_IS_EMPTY");
@@ -132,6 +198,11 @@ contract KeyContract is ERC721A, ERC2981, AccessControl {
         require(sent, "TX_FAILED");
     }
 
+    /**
+     * @dev Allows the admin to withdraw all of a specified token from the contract.
+     * @param _tokenAddress Address of the token to be withdrawn.
+     * @param _receiver Address to receive the withdrawn tokens.
+     */
     function withdrawToken(
         address _tokenAddress,
         address _receiver
@@ -143,6 +214,10 @@ contract KeyContract is ERC721A, ERC2981, AccessControl {
         require(sent, "TOKEN_TX_FAILED");
     }
 
+    /**
+     * @dev Checks if the contract supports a given interface.
+     * @param interfaceId ID of the interface to be checked.
+     */
     function supportsInterface(
         bytes4 interfaceId
     )

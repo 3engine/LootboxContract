@@ -80,6 +80,14 @@ contract ItemsContract is ERC721A, ERC2981, AccessControl {
         _setupRole(DEFAULT_ADMIN_ROLE, msg.sender);
     }
 
+    /**
+     * @dev Creates a new LootBox with defined attributes and associated items.
+     * @param _supply Maximum number of boxes that can be minted.
+     * @param _itemContract Address of the associated item contract.
+     * @param _price Price of the LootBox.
+     * @param _itemIds Array of item IDs available in the LootBox.
+     * @param _chances Array of chances for each item in the LootBox.
+     */
     function createLootBox(
         uint256 _supply,
         address _itemContract,
@@ -115,6 +123,11 @@ contract ItemsContract is ERC721A, ERC2981, AccessControl {
         keyContract.createKey(currentLootBoxId, _price);
     }
 
+    /**
+     * @dev Mints a LootBox of a specified type to a recipient.
+     * @param _to Address to receive the minted LootBox.
+     * @param _lootBoxId ID of the LootBox type to mint.
+     */
     function mintLootBox(
         address _to,
         uint256 _lootBoxId
@@ -129,6 +142,11 @@ contract ItemsContract is ERC721A, ERC2981, AccessControl {
         boxType[currentMintedBoxId] = _lootBoxId;
     }
 
+    /**
+     * @dev Allows the owner of a LootBox to open it and receive an item.
+     * @param _boxID ID of the LootBox to open.
+     * @param _keyId ID of the key required to open the LootBox.
+     */
     function openBox(uint256 _boxID, uint256 _keyId) external {
         require(ownerOf(_boxID) == msg.sender, "NOT_THE_BOX_OWNER");
         require(keyContract.ownerOf(_keyId) == msg.sender, "NOT_THE_KEY_OWNER");
@@ -163,24 +181,77 @@ contract ItemsContract is ERC721A, ERC2981, AccessControl {
         revert("FAILED_TO_SELECT_ITEM");
     }
 
+    /**
+     * @dev Retrieves all items associated with a specific LootBox.
+     * @param _id ID of the LootBox.
+     */
     function getLootBoxItems(
         uint256 _id
     ) external view returns (Item[] memory) {
         return lootBoxes[_id].items;
     }
 
+    /**
+     * @dev Sets the key contract address used for LootBox interactions.
+     * @param _contractAddress Address of the key contract.
+     */
     function addKeyContract(
         address _contractAddress
     ) external onlyRole(DEFAULT_ADMIN_ROLE) {
         keyContract = IKeyContract(_contractAddress);
     }
 
+    /**
+     * @dev Retrieves the remaining supply of a specific LootBox type.
+     * @param _boxID ID of the LootBox type.
+     */
+    function getSupply(uint256 _boxID) external view returns (uint256) {
+        LootBox storage box = lootBoxes[_boxID];
+        return box.supply;
+    }
+
+    /**
+     * @dev Checks if an address has the minter role.
+     * @param account Address to be checked.
+     */
+    function isMinter(address account) external view returns (bool) {
+        return hasRole(MINTER_ROLE, account);
+    }
+
+    /**
+     * @dev Grants the minter role to a specified address.
+     * @param account Address to be granted the role.
+     */
+    function grantMinterRole(
+        address account
+    ) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        grantRole(MINTER_ROLE, account);
+    }
+
+    /**
+     * @dev Revokes the minter role from a specified address.
+     * @param account Address from which the role needs to be revoked.
+     */
+    function revokeMinterRole(
+        address account
+    ) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        revokeRole(MINTER_ROLE, account);
+    }
+
+    /**
+     * @dev Sets the base URI for tokens.
+     * @param _URI The base URI to be set.
+     */
     function setBaseURI(
         string memory _URI
     ) public onlyRole(DEFAULT_ADMIN_ROLE) {
         BASE_URI = _URI;
     }
 
+    /**
+     * @dev Retrieves the full URI for a specific token ID.
+     * @param _id ID of the token.
+     */
     function tokenURI(
         uint256 _id
     ) public view override(ERC721A) returns (string memory) {
@@ -190,27 +261,10 @@ contract ItemsContract is ERC721A, ERC2981, AccessControl {
                 : "";
     }
 
-    function getSupply(uint256 _boxID) external view returns (uint256) {
-        LootBox storage box = lootBoxes[_boxID];
-        return box.supply;
-    }
-
-    function isMinter(address account) external view returns (bool) {
-        return hasRole(MINTER_ROLE, account);
-    }
-
-    function grantMinterRole(
-        address account
-    ) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        grantRole(MINTER_ROLE, account);
-    }
-
-    function revokeMinterRole(
-        address account
-    ) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        revokeRole(MINTER_ROLE, account);
-    }
-
+    /**
+     * @dev Allows the admin to withdraw all ether from the contract.
+     * @param _receiver Address to receive the withdrawn ether.
+     */
     function withdraw(address _receiver) external onlyRole(DEFAULT_ADMIN_ROLE) {
         uint256 balance = address(this).balance;
         require(balance != 0, "BALANCE_IS_EMPTY");
@@ -218,6 +272,11 @@ contract ItemsContract is ERC721A, ERC2981, AccessControl {
         require(sent, "TX_FAILED");
     }
 
+    /**
+     * @dev Allows the admin to withdraw all of a specified token from the contract.
+     * @param _tokenAddress Address of the token to be withdrawn.
+     * @param _receiver Address to receive the withdrawn tokens.
+     */
     function withdrawToken(
         address _tokenAddress,
         address _receiver
@@ -229,6 +288,10 @@ contract ItemsContract is ERC721A, ERC2981, AccessControl {
         require(sent, "TOKEN_TX_FAILED");
     }
 
+    /**
+     * @dev Checks if the contract supports a given interface.
+     * @param interfaceId ID of the interface to be checked.
+     */
     function supportsInterface(
         bytes4 interfaceId
     )

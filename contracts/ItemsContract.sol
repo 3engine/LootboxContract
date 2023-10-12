@@ -38,6 +38,10 @@ contract ItemContract is ERC721A, ERC2981, AccessControl {
         _setupRole(MINTER_ROLE, msg.sender);
     }
 
+    /**
+     * @dev Adds a new item to the collection
+     * @param _name Name of the item to be added.
+     */
     function addItem(
         string memory _name
     ) external onlyRole(DEFAULT_ADMIN_ROLE) {
@@ -47,6 +51,11 @@ contract ItemContract is ERC721A, ERC2981, AccessControl {
         newItem.name = _name;
     }
 
+    /**
+     * @dev Mints a new token of a specified item type to a recipient.
+     * @param to Address to receive the minted token.
+     * @param _itemID ID of the item type to mint.
+     */
     function mint(address to, uint256 _itemID) external onlyRole(MINTER_ROLE) {
         require(_itemID <= currentitemId, "ITEMID_DONT_EXIST");
         _safeMint(to, 1);
@@ -54,28 +63,48 @@ contract ItemContract is ERC721A, ERC2981, AccessControl {
         tokenType[currentMintedItems] = _itemID;
     }
 
+    /**
+     * @dev Checks if an address has the minter role.
+     * @param account Address to be checked.
+     */
     function isMinter(address account) external view returns (bool) {
         return hasRole(MINTER_ROLE, account);
     }
 
+    /**
+     * @dev Grants the minter role to a specified address.
+     * @param account Address to be granted the role.
+     */
     function grantMinterRole(
         address account
     ) external onlyRole(DEFAULT_ADMIN_ROLE) {
         grantRole(MINTER_ROLE, account);
     }
 
+    /**
+     * @dev Revokes the minter role from a specified address.
+     * @param account Address from which the role needs to be revoked.
+     */
     function revokeMinterRole(
         address account
     ) external onlyRole(DEFAULT_ADMIN_ROLE) {
         revokeRole(MINTER_ROLE, account);
     }
 
+    /**
+     * @dev Sets the base URI for tokens.
+     * @param _URI The base URI to be set.
+     */
     function setBaseURI(
         string memory _URI
     ) public onlyRole(DEFAULT_ADMIN_ROLE) {
         BASE_URI = _URI;
     }
 
+    /**
+     * @dev Retrieves the full URI for a specific token ID.
+     * @param _id ID of the token.
+     */
     function tokenURI(
         uint256 _id
     ) public view override(ERC721A) returns (string memory) {
@@ -85,10 +114,18 @@ contract ItemContract is ERC721A, ERC2981, AccessControl {
                 : "";
     }
 
+    /**
+     * @dev Checks if a token with the specified ID exists.
+     * @param tokenId ID of the token to be checked.
+     */
     function exists(uint256 tokenId) public view returns (bool) {
         return _exists(tokenId);
     }
 
+    /**
+     * @dev Allows the admin to withdraw all ether from the contract.
+     * @param _receiver Address to receive the withdrawn ether.
+     */
     function withdraw(address _receiver) external onlyRole(DEFAULT_ADMIN_ROLE) {
         uint256 balance = address(this).balance;
         require(balance != 0, "BALANCE_IS_EMPTY");
@@ -96,6 +133,11 @@ contract ItemContract is ERC721A, ERC2981, AccessControl {
         require(sent, "TX_FAILED");
     }
 
+    /**
+     * @dev Allows the admin to withdraw all of a specified token from the contract.
+     * @param _tokenAddress Address of the token to be withdrawn.
+     * @param _receiver Address to receive the withdrawn tokens.
+     */
     function withdrawToken(
         address _tokenAddress,
         address _receiver
@@ -107,6 +149,10 @@ contract ItemContract is ERC721A, ERC2981, AccessControl {
         require(sent, "TOKEN_TX_FAILED");
     }
 
+    /**
+     * @dev Checks if the contract supports a given interface.
+     * @param interfaceId ID of the interface to be checked.
+     */
     function supportsInterface(
         bytes4 interfaceId
     )
