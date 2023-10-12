@@ -1,8 +1,11 @@
 // SPDX-License-Identifier: MIT
+// Creator: 3Engine
+// Author: mranoncoder
 pragma solidity ^0.8.9;
 
 import "erc721a/contracts/ERC721A.sol";
 import "@openzeppelin/contracts/access/AccessControl.sol";
+import "@openzeppelin/contracts/token/common/ERC2981.sol";
 
 interface IERC20 {
     function balanceOf(address account) external view returns (uint256);
@@ -13,7 +16,7 @@ interface IERC20 {
     ) external returns (bool);
 }
 
-contract ERC721Mintable is ERC721A, AccessControl {
+contract ItemContract is ERC721A, ERC2981, AccessControl {
     bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
     uint256 public currentitemId = 0;
     uint256 public currentMintedItems = 0;
@@ -45,7 +48,7 @@ contract ERC721Mintable is ERC721A, AccessControl {
     }
 
     function mint(address to, uint256 _itemID) external onlyRole(MINTER_ROLE) {
-        require(_itemID <= currentitemId, "ItemID does not exist");
+        require(_itemID <= currentitemId, "ITEMID_DONT_EXIST");
         _safeMint(to, 1);
         currentMintedItems++;
         tokenType[currentMintedItems] = _itemID;
@@ -53,14 +56,6 @@ contract ERC721Mintable is ERC721A, AccessControl {
 
     function isMinter(address account) external view returns (bool) {
         return hasRole(MINTER_ROLE, account);
-    }
-
-    function supportsInterface(
-        bytes4 interfaceId
-    ) public view override(ERC721A, AccessControl) returns (bool) {
-        return
-            ERC721A.supportsInterface(interfaceId) ||
-            AccessControl.supportsInterface(interfaceId);
     }
 
     function grantMinterRole(
@@ -101,11 +96,29 @@ contract ERC721Mintable is ERC721A, AccessControl {
         require(sent, "TX_FAILED");
     }
 
-    function withdrawToken(address _tokenAddress, address _receiver) external {
+    function withdrawToken(
+        address _tokenAddress,
+        address _receiver
+    ) external onlyRole(DEFAULT_ADMIN_ROLE) {
         IERC20 token = IERC20(_tokenAddress);
         uint256 balance = token.balanceOf(address(this));
         require(balance != 0, "TOKEN_BALANCE_IS_EMPTY");
         bool sent = token.transfer(_receiver, balance);
         require(sent, "TOKEN_TX_FAILED");
+    }
+
+    function supportsInterface(
+        bytes4 interfaceId
+    )
+        public
+        view
+        virtual
+        override(ERC721A, ERC2981, AccessControl)
+        returns (bool)
+    {
+        return
+            ERC721A.supportsInterface(interfaceId) ||
+            ERC2981.supportsInterface(interfaceId) ||
+            AccessControl.supportsInterface(interfaceId);
     }
 }

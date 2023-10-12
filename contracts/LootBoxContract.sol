@@ -1,10 +1,15 @@
 // SPDX-License-Identifier: MIT
+// Creator: 3Engine
+// Author: mranoncoder
 pragma solidity >=0.8.9;
 
 import "erc721a/contracts/ERC721A.sol";
 import "@openzeppelin/contracts/access/AccessControl.sol";
 import "@openzeppelin/contracts/token/common/ERC2981.sol";
 
+/**
+ * @dev Interface of ERC20
+ */
 interface IERC20 {
     function balanceOf(address account) external view returns (uint256);
 
@@ -14,7 +19,10 @@ interface IERC20 {
     ) external returns (bool);
 }
 
-interface IERC721Mintable {
+/**
+ * @dev Interface of Item Contract
+ */
+interface IItemContract {
     function mint(address to, uint256 tokenId) external;
 
     function exists(uint256 tokenId) external view returns (bool);
@@ -22,6 +30,9 @@ interface IERC721Mintable {
     function isMinter(address account) external view returns (bool);
 }
 
+/**
+ * @dev Interface of Key Contract
+ */
 interface IKeyContract {
     struct KeyInfo {
         uint256 lootboxId;
@@ -41,6 +52,7 @@ interface IKeyContract {
 contract ItemsContract is ERC721A, ERC2981, AccessControl {
     bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
     IKeyContract public keyContract;
+    string public BASE_URI;
     uint256 public currentMintedBoxId = 0;
     uint256 public currentLootBoxId = 0;
 
@@ -51,12 +63,11 @@ contract ItemsContract is ERC721A, ERC2981, AccessControl {
     struct LootBox {
         uint256 id;
         uint256 supply;
-        Item[] items;
         address itemContract;
+        Item[] items;
     }
     mapping(uint256 => uint256) public boxType;
     mapping(uint256 => LootBox) public lootBoxes;
-    string public BASE_URI;
 
     constructor(
         string memory _name,
@@ -69,12 +80,6 @@ contract ItemsContract is ERC721A, ERC2981, AccessControl {
         _setupRole(DEFAULT_ADMIN_ROLE, msg.sender);
     }
 
-    function addKeyContract(
-        address _contractAddress
-    ) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        keyContract = IKeyContract(_contractAddress);
-    }
-
     function createLootBox(
         uint256 _supply,
         address _itemContract,
@@ -84,14 +89,11 @@ contract ItemsContract is ERC721A, ERC2981, AccessControl {
     ) external onlyRole(DEFAULT_ADMIN_ROLE) {
         require(_itemIds.length == _chances.length, "ITEM_MISMATCH");
 
-        IERC721Mintable mintableContract = IERC721Mintable(_itemContract);
-        require(mintableContract.isMinter(address(this)), "NOT_A_MINTER");
+        IItemContract itemContract = IItemContract(_itemContract);
+        require(itemContract.isMinter(address(this)), "NOT_A_MINTER");
 
         for (uint8 i = 0; i < _itemIds.length; i++) {
-            require(
-                mintableContract.exists(_itemIds[i]),
-                "ITEM_DOES_NOT_EXIST"
-            );
+            require(itemContract.exists(_itemIds[i]), "ITEM_DOES_NOT_EXIST");
         }
 
         uint8 totalChance;
@@ -113,12 +115,6 @@ contract ItemsContract is ERC721A, ERC2981, AccessControl {
         keyContract.createKey(currentLootBoxId, _price);
     }
 
-    function getLootBoxItems(
-        uint256 _id
-    ) external view returns (Item[] memory) {
-        return lootBoxes[_id].items;
-    }
-
     function mintLootBox(
         address _to,
         uint256 _lootBoxId
@@ -134,7 +130,7 @@ contract ItemsContract is ERC721A, ERC2981, AccessControl {
     }
 
     function openBox(uint256 _boxID, uint256 _keyId) external {
-        require(ownerOf(_boxID) == msg.sender, "NOT_THE_OWNER");
+        require(ownerOf(_boxID) == msg.sender, "NOT_THE_BOX_OWNER");
         require(keyContract.ownerOf(_keyId) == msg.sender, "NOT_THE_KEY_OWNER");
         require(
             keyContract.keyBoxID(_keyId) == _boxID,
@@ -159,12 +155,24 @@ contract ItemsContract is ERC721A, ERC2981, AccessControl {
                 keyContract.burnKey(_keyId);
                 _burn(_boxID);
                 uint256 itemId = box.items[i].id;
-                IERC721Mintable(box.itemContract).mint(msg.sender, itemId);
+                IItemContract(box.itemContract).mint(msg.sender, itemId);
                 return;
             }
         }
 
-        revert("Failed to select an item");
+        revert("FAILED_TO_SELECT_ITEM");
+    }
+
+    function getLootBoxItems(
+        uint256 _id
+    ) external view returns (Item[] memory) {
+        return lootBoxes[_id].items;
+    }
+
+    function addKeyContract(
+        address _contractAddress
+    ) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        keyContract = IKeyContract(_contractAddress);
     }
 
     function setBaseURI(
@@ -180,13 +188,6 @@ contract ItemsContract is ERC721A, ERC2981, AccessControl {
             bytes(BASE_URI).length > 0
                 ? string(abi.encodePacked(BASE_URI, _toString(_id)))
                 : "";
-    }
-
-    function withdraw(address _receiver) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        uint256 balance = address(this).balance;
-        require(balance != 0, "BALANCE_IS_EMPTY");
-        (bool sent, bytes memory data) = _receiver.call{value: balance}("");
-        require(sent, "TX_FAILED");
     }
 
     function getSupply(uint256 _boxID) external view returns (uint256) {
@@ -210,7 +211,17 @@ contract ItemsContract is ERC721A, ERC2981, AccessControl {
         revokeRole(MINTER_ROLE, account);
     }
 
-    function withdrawToken(address _tokenAddress, address _receiver) external {
+    function withdraw(address _receiver) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        uint256 balance = address(this).balance;
+        require(balance != 0, "BALANCE_IS_EMPTY");
+        (bool sent, bytes memory data) = _receiver.call{value: balance}("");
+        require(sent, "TX_FAILED");
+    }
+
+    function withdrawToken(
+        address _tokenAddress,
+        address _receiver
+    ) external onlyRole(DEFAULT_ADMIN_ROLE) {
         IERC20 token = IERC20(_tokenAddress);
         uint256 balance = token.balanceOf(address(this));
         require(balance != 0, "TOKEN_BALANCE_IS_EMPTY");
