@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 // Creator: 3Engine
 // Author: mranoncoder
-pragma solidity >=0.8.9;
+pragma solidity ^0.8.20;
 
 import "erc721a/contracts/ERC721A.sol";
 import "@openzeppelin/contracts/access/AccessControl.sol";
@@ -22,10 +22,10 @@ interface IERC20 {
 /**
  * @dev Interface of Item Contract
  */
-interface IItemContract {
+interface IItemsContract {
     function mint(address to, uint256 tokenId) external;
 
-    function exists(uint256 tokenId) external view returns (bool);
+    function itemExists(uint256 itemId) external view returns (bool);
 
     function isMinter(address account) external view returns (bool);
 }
@@ -49,7 +49,7 @@ interface IKeyContract {
     function createKey(uint256 _lootboxId, uint256 _price) external;
 }
 
-contract ItemsContract is ERC721A, ERC2981, AccessControl {
+contract LootBoxContract is ERC721A, ERC2981, AccessControl {
     bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
     IKeyContract public keyContract;
     string public BASE_URI;
@@ -63,7 +63,7 @@ contract ItemsContract is ERC721A, ERC2981, AccessControl {
     struct LootBox {
         uint256 id;
         uint256 supply;
-        address itemContract;
+        address itemsContract;
         Item[] items;
     }
     mapping(uint256 => uint256) public boxType;
@@ -76,32 +76,35 @@ contract ItemsContract is ERC721A, ERC2981, AccessControl {
         string memory _URI
     ) ERC721A(_name, _symbol) {
         BASE_URI = _URI;
-        _setupRole(MINTER_ROLE, minter);
-        _setupRole(DEFAULT_ADMIN_ROLE, msg.sender);
+        _grantRole(MINTER_ROLE, minter);
+        _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
     }
 
     /**
      * @dev Creates a new LootBox with defined attributes and associated items.
      * @param _supply Maximum number of boxes that can be minted.
-     * @param _itemContract Address of the associated item contract.
-     * @param _price Price of the LootBox.
+     * @param _itemsContract Address of the associated item contract.
+     * @param _price Price of the LootBox in wei.
      * @param _itemIds Array of item IDs available in the LootBox.
      * @param _chances Array of chances for each item in the LootBox.
      */
     function createLootBox(
         uint256 _supply,
-        address _itemContract,
+        address _itemsContract,
         uint256 _price,
         uint256[] memory _itemIds,
         uint8[] memory _chances
     ) external onlyRole(DEFAULT_ADMIN_ROLE) {
         require(_itemIds.length == _chances.length, "ITEM_MISMATCH");
 
-        IItemContract itemContract = IItemContract(_itemContract);
-        require(itemContract.isMinter(address(this)), "NOT_A_MINTER");
+        IItemsContract itemsContract = IItemsContract(_itemsContract);
+        require(itemsContract.isMinter(address(this)), "NOT_ITEM_MINTER");
 
         for (uint8 i = 0; i < _itemIds.length; i++) {
-            require(itemContract.exists(_itemIds[i]), "ITEM_DOES_NOT_EXIST");
+            require(
+                itemsContract.itemExists(_itemIds[i]),
+                "ITEM_DOES_NOT_EXIST"
+            );
         }
 
         uint8 totalChance;
@@ -114,7 +117,7 @@ contract ItemsContract is ERC721A, ERC2981, AccessControl {
         LootBox storage newBox = lootBoxes[currentLootBoxId];
         newBox.id = currentLootBoxId;
         newBox.supply = _supply;
-        newBox.itemContract = _itemContract;
+        newBox.itemsContract = _itemsContract;
 
         for (uint8 i = 0; i < _itemIds.length; i++) {
             Item memory newItem = Item({id: _itemIds[i], chance: _chances[i]});
@@ -133,13 +136,13 @@ contract ItemsContract is ERC721A, ERC2981, AccessControl {
         uint256 _lootBoxId
     ) external onlyRole(MINTER_ROLE) {
         LootBox storage box = lootBoxes[_lootBoxId];
-        require(box.supply > 0, "OUT_OF_SUPPLY");
+        require(box.supply >= 0, "OUT_OF_SUPPLY");
 
         box.supply--;
 
         _safeMint(_to, 1);
-        currentMintedBoxId++;
         boxType[currentMintedBoxId] = _lootBoxId;
+        currentMintedBoxId++;
     }
 
     /**
@@ -150,12 +153,12 @@ contract ItemsContract is ERC721A, ERC2981, AccessControl {
     function openBox(uint256 _boxID, uint256 _keyId) external {
         require(ownerOf(_boxID) == msg.sender, "NOT_THE_BOX_OWNER");
         require(keyContract.ownerOf(_keyId) == msg.sender, "NOT_THE_KEY_OWNER");
+        uint256 lootBoxType = boxType[_boxID];
+
         require(
-            keyContract.keyBoxID(_keyId) == _boxID,
+            keyContract.keyBoxID(_keyId) == lootBoxType,
             "KEY_DOES_NOT_MATCH_LOOTBOX"
         );
-
-        uint256 lootBoxType = boxType[_boxID];
         LootBox storage box = lootBoxes[lootBoxType];
 
         uint8 random = uint8(
@@ -173,7 +176,7 @@ contract ItemsContract is ERC721A, ERC2981, AccessControl {
                 keyContract.burnKey(_keyId);
                 _burn(_boxID);
                 uint256 itemId = box.items[i].id;
-                IItemContract(box.itemContract).mint(msg.sender, itemId);
+                IItemsContract(box.itemsContract).mint(msg.sender, itemId);
                 return;
             }
         }
@@ -225,7 +228,7 @@ contract ItemsContract is ERC721A, ERC2981, AccessControl {
     function grantMinterRole(
         address account
     ) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        grantRole(MINTER_ROLE, account);
+        _grantRole(MINTER_ROLE, account);
     }
 
     /**
@@ -235,7 +238,7 @@ contract ItemsContract is ERC721A, ERC2981, AccessControl {
     function revokeMinterRole(
         address account
     ) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        revokeRole(MINTER_ROLE, account);
+        _revokeRole(MINTER_ROLE, account);
     }
 
     /**

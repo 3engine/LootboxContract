@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 // Creator: 3Engine
 // Author: mranoncoder
-pragma solidity ^0.8.9;
+pragma solidity ^0.8.20;
 
 import "erc721a/contracts/ERC721A.sol";
 import "@openzeppelin/contracts/access/AccessControl.sol";
@@ -39,11 +39,13 @@ contract KeyContract is ERC721A, ERC2981, AccessControl {
     constructor(
         string memory _name,
         string memory _symbol,
-        address _lootBoxContractAddress
+        address _lootBoxContractAddress,
+        string memory _URI
     ) ERC721A(_name, _symbol) {
-        _setupRole(DEFAULT_ADMIN_ROLE, msg.sender);
-        _setupRole(MODERATOR_ROLE, msg.sender);
+        _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
+        _grantRole(MODERATOR_ROLE, _lootBoxContractAddress);
         lootBoxContract = ILootBox(_lootBoxContractAddress);
+        BASE_URI = _URI;
     }
 
     /**
@@ -151,7 +153,7 @@ contract KeyContract is ERC721A, ERC2981, AccessControl {
     function grantModeratorRole(
         address _address
     ) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        grantRole(MODERATOR_ROLE, _address);
+        _grantRole(MODERATOR_ROLE, _address);
     }
 
     /**
@@ -161,7 +163,7 @@ contract KeyContract is ERC721A, ERC2981, AccessControl {
     function revokeModeratorRole(
         address _address
     ) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        revokeRole(MODERATOR_ROLE, _address);
+        _revokeRole(MODERATOR_ROLE, _address);
     }
 
     /**

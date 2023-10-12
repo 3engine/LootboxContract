@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 // Creator: 3Engine
 // Author: mranoncoder
-pragma solidity ^0.8.9;
+pragma solidity ^0.8.20;
 
 import "erc721a/contracts/ERC721A.sol";
 import "@openzeppelin/contracts/access/AccessControl.sol";
@@ -16,8 +16,9 @@ interface IERC20 {
     ) external returns (bool);
 }
 
-contract ItemContract is ERC721A, ERC2981, AccessControl {
+contract ItemsContract is ERC721A, ERC2981, AccessControl {
     bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
+    string public BASE_URI;
     uint256 public currentitemId = 0;
     uint256 public currentMintedItems = 0;
 
@@ -28,14 +29,15 @@ contract ItemContract is ERC721A, ERC2981, AccessControl {
 
     mapping(uint256 => Item) public items;
     mapping(uint256 => uint256) public tokenType;
-    string public BASE_URI;
 
     constructor(
         string memory _name,
-        string memory _symbol
+        string memory _symbol,
+        string memory _URI
     ) ERC721A(_name, _symbol) {
-        _setupRole(DEFAULT_ADMIN_ROLE, msg.sender);
-        _setupRole(MINTER_ROLE, msg.sender);
+        _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
+        _grantRole(MINTER_ROLE, msg.sender);
+        BASE_URI = _URI;
     }
 
     /**
@@ -78,7 +80,7 @@ contract ItemContract is ERC721A, ERC2981, AccessControl {
     function grantMinterRole(
         address account
     ) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        grantRole(MINTER_ROLE, account);
+        _grantRole(MINTER_ROLE, account);
     }
 
     /**
@@ -88,7 +90,7 @@ contract ItemContract is ERC721A, ERC2981, AccessControl {
     function revokeMinterRole(
         address account
     ) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        revokeRole(MINTER_ROLE, account);
+        _revokeRole(MINTER_ROLE, account);
     }
 
     /**
@@ -112,6 +114,14 @@ contract ItemContract is ERC721A, ERC2981, AccessControl {
             bytes(BASE_URI).length > 0
                 ? string(abi.encodePacked(BASE_URI, _toString(_id)))
                 : "";
+    }
+
+    /**
+     * @dev Checks if a item with the specified ID exists.
+     * @param itemId ID of the item to be checked.
+     */
+    function itemExists(uint256 itemId) public view returns (bool) {
+        return items[itemId].id == itemId;
     }
 
     /**
