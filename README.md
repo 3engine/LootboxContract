@@ -1,4 +1,4 @@
-# LootBox and Item NFT Project
+# LootBox and Item Contracts
 
 With this project, you can create and manage LootBoxes and Items, which are NFTs (Non-Fungible Tokens). Additionally, a key mechanism is implemented to facilitate unlocking these LootBoxes.
 
