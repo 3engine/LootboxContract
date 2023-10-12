@@ -1,0 +1,5 @@
+[
+  "function isMinter(address) view returns (bool)",
+  "function itemExists(uint256) view returns (bool)",
+  "function mint(address,uint256)"
+]
