@@ -61,8 +61,8 @@ contract ItemsContract is ERC721A, ERC2981, AccessControl {
     function mint(address to, uint256 _itemID) external onlyRole(MINTER_ROLE) {
         require(_itemID <= currentitemId, "ITEMID_DONT_EXIST");
         _safeMint(to, 1);
-        currentMintedItems++;
         tokenType[currentMintedItems] = _itemID;
+        currentMintedItems++;
     }
 
     /**
