@@ -4,6 +4,7 @@
 pragma solidity ^0.8.20;
 
 import "erc721a/contracts/ERC721A.sol";
+import "erc721a/contracts/extensions/ERC721AQueryable.sol";
 import "@openzeppelin/contracts/access/AccessControl.sol";
 import "@openzeppelin/contracts/token/common/ERC2981.sol";
 
@@ -49,7 +50,7 @@ interface IKeyContract {
     function createKey(uint256 _lootboxId, uint256 _price) external;
 }
 
-contract LootBoxContract is ERC721A, ERC2981, AccessControl {
+contract LootBoxContract is ERC721A, ERC721AQueryable, ERC2981, AccessControl {
     bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
     IKeyContract public keyContract;
     string public BASE_URI;
@@ -257,7 +258,7 @@ contract LootBoxContract is ERC721A, ERC2981, AccessControl {
      */
     function tokenURI(
         uint256 _id
-    ) public view override(ERC721A) returns (string memory) {
+    ) public view override(ERC721A, IERC721A) returns (string memory) {
         return
             bytes(BASE_URI).length > 0
                 ? string(abi.encodePacked(BASE_URI, _toString(_id)))
@@ -301,7 +302,7 @@ contract LootBoxContract is ERC721A, ERC2981, AccessControl {
         public
         view
         virtual
-        override(ERC721A, ERC2981, AccessControl)
+        override(ERC721A, ERC2981, AccessControl, IERC721A)
         returns (bool)
     {
         return

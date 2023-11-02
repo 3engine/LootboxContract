@@ -42,6 +42,10 @@ module.exports = {
       },
       chainId: 1,
     },
+    bsc: {
+      url: 'https://binance-testnet.rpc.thirdweb.com',
+      accounts:  process.env.PRIVATE_KEY !== undefined ? [process.env.PRIVATE_KEY] : [],
+    }
   },
   abiExporter: [
     {
