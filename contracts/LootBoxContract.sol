@@ -70,6 +70,8 @@ contract LootBoxContract is ERC721A, ERC721AQueryable, ERC2981, AccessControl {
     mapping(uint256 => uint256) public boxType;
     mapping(uint256 => LootBox) public lootBoxes;
 
+    event BoxOpened(uint256 _boxID, uint256 _keyID, uint256 _itemID, address _to, address _itemContract);
+
     constructor(
         string memory _name,
         string memory _symbol,
@@ -178,6 +180,7 @@ contract LootBoxContract is ERC721A, ERC721AQueryable, ERC2981, AccessControl {
                 _burn(_boxID);
                 uint256 itemId = box.items[i].id;
                 IItemsContract(box.itemsContract).mint(msg.sender, itemId);
+                emit BoxOpened(_boxID, _keyId, itemId, msg.sender, box.itemsContract);
                 return;
             }
         }
