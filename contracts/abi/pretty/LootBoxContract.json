@@ -22,6 +22,7 @@
   "error URIQueryForNonexistentToken()",
   "event Approval(address indexed,address indexed,uint256 indexed)",
   "event ApprovalForAll(address indexed,address indexed,bool)",
+  "event BoxOpened(uint256,uint256,uint256,address,address)",
   "event ConsecutiveTransfer(uint256 indexed,uint256,address indexed,address indexed)",
   "event RoleAdminChanged(bytes32 indexed,bytes32 indexed,bytes32 indexed)",
   "event RoleGranted(bytes32 indexed,address indexed,address indexed)",
